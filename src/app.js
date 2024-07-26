@@ -18,10 +18,19 @@ app.use(cookieParser())
 
 
 app.get('/', function (req,res){
-   res.json({
-    msg : "Hello ji kaise ho saare ?"
-   })
+   res.send("<h1>Server is running</h1>")
 })
+
+
+// router import
+import userRoutes from "./routes/user.route.js"
+
+
+
+// router declaration
+app.use("/api/v1/users" , userRoutes);
+
+
 
 
 export { app }
