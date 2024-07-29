@@ -77,6 +77,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
 
 // this method is used to generate secret access token
 userSchema.methods.generateAccessToken = function(){
+    
     const payload = {
         _id: this._id ,
         email : this.email,
