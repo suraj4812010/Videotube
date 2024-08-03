@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginUser, logoutUser, refreshAccessToken, registerUser, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage } from "../controllers/user.controller.js";
+import { loginUser, logoutUser, refreshAccessToken, registerUser, changeCurrentPassword, getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile } from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 
@@ -38,6 +38,9 @@ router.route("/updateCoverImage").put(
     upload.single("coverImage"),
     updateUserCoverImage
 )
+
+
+router.route("/getUserChannelProfile/:username").get(verifyJWT, getUserChannelProfile)
 
 // http://localhost:8000/api/v1/users/register
 
