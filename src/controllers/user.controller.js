@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 
 // generate access and refresh token
@@ -445,6 +446,7 @@ const updateUserCoverImage = asyncHandler(async(req,res) =>{
 
 // get user channel profile
 const getUserChannelProfile = asyncHandler(async (req,res) => {
+    // get username from params
     const {username} = req.params;
 
     if(!username?.trim()){
@@ -459,7 +461,7 @@ const getUserChannelProfile = asyncHandler(async (req,res) => {
             }
         },
         {
-            // look for 
+            // look for no of subscribers of a channel/user by filtering out by channel name
             $lookup:{
                 from : "subscriptions",
                 localField : "_id",
@@ -468,6 +470,7 @@ const getUserChannelProfile = asyncHandler(async (req,res) => {
             }
         },
         {
+            // look for no of channel subscribed by user by filtering subscriber 
             $lookup:{
                 from : "subscriptions",
                 localField : "_id",
@@ -476,6 +479,7 @@ const getUserChannelProfile = asyncHandler(async (req,res) => {
             }
         },
         {
+            // add these field to the document
             $addFields:{
                 subscribersCount : {
                     $size : "$subscribers"
@@ -491,6 +495,7 @@ const getUserChannelProfile = asyncHandler(async (req,res) => {
             }
         },
         {
+            // project means to show all these fileds in response
             $project:{
                 username:1,
                 fullName:1,
@@ -522,6 +527,68 @@ const getUserChannelProfile = asyncHandler(async (req,res) => {
 
 
 
+// get watch history handler
+const getWatchHistory = asyncHandler(async (req,res) => {
+
+    const user = await User.aggregate([
+        {
+            // find the user by _id coming from middleware
+            $match : {
+                _id : new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {   
+            // at this point we get all the watch history array having videos object
+            $lookup : {
+                from : "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as : "watchHistory",
+                pipeline : [
+                    {
+                        // at this point we are in videos look for owner details of this each video
+                        $lookup : {
+                            from : "users",
+                            localField : "owner",
+                            foreignField : "_id",
+                            as : "owner",
+                            pipeline : [
+                                {
+                                    $project : {
+                                        fullName :1,
+                                        username :1,
+                                        avatar : 1
+
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // add first field from 
+                    {
+                        $addFields : {
+                            owner : {
+                                $first : "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user[0].watchHistory , "Watch History fetched successfully")
+    )
+
+})
+
+
+
+
 
 export {
     registerUser,
@@ -533,5 +600,6 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
-    getUserChannelProfile
+    getUserChannelProfile,
+    getWatchHistory
 };
