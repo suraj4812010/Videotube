@@ -197,8 +197,11 @@ const logoutUser = asyncHandler(async (req,res) => {
     // find this user in DB and set refreshToken : undefined
      await User.findByIdAndUpdate(
         req.user?._id,
-        {
-            refreshToken : "" 
+         {
+            $unset : {
+                 refreshToken : 1 // this removes the field from the document
+            }
+            
         },
         {
             new : true
@@ -377,7 +380,7 @@ const updateUserAvatar = asyncHandler(async(req,res) =>{
         throw new ApiError(400,"Avatar file is missing");
     }
 
-    const avatarResponse = await uploadOnCloudinary(avatarLocalpath);
+    const avatarResponse = await uploadOnCloudinary(avatarLocalpath , "videotube");
     console.log("avatar cloudinary reponse : ",avatarResponse)
     if(!avatarResponse.url){
         throw new ApiError(400,"Error while uploading on avatar file");
@@ -414,7 +417,7 @@ const updateUserCoverImage = asyncHandler(async(req,res) =>{
         throw new ApiError(400,"CoverImage file is missing");
     }
 
-    const coverImageResponse = await uploadOnCloudinary(coverImageLocalpath);
+    const coverImageResponse = await uploadOnCloudinary(coverImageLocalpath , "videotube");
 
     if(!coverImageResponse.url){
         throw new ApiError(400,"Error while uploading on CoverImage file");
