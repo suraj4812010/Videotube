@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {User} from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -375,20 +375,19 @@ const updateAccountDetails = asyncHandler(async(req,res) => {
 const updateUserAvatar = asyncHandler(async(req,res) =>{
 
     const avatarLocalpath = req.file?.path;
-    console.log("avatar local path : ",avatarLocalpath)
+    // console.log("avatar local path : ",avatarLocalpath)
     if(!avatarLocalpath){
         throw new ApiError(400,"Avatar file is missing");
     }
 
     const avatarResponse = await uploadOnCloudinary(avatarLocalpath , "videotube");
-    console.log("avatar cloudinary reponse : ",avatarResponse)
+    // console.log("avatar cloudinary reponse : ",avatarResponse)
     if(!avatarResponse.url){
         throw new ApiError(400,"Error while uploading on avatar file");
     }
 
-    // get userId from middleware if loggedIN
+    // get userId from middleware if loggedIN and set new Avatar
     const userId = req.user?._id;
-
     const updatedAvatar = await User.findByIdAndUpdate(
         userId,
         {
@@ -400,6 +399,22 @@ const updateUserAvatar = asyncHandler(async(req,res) =>{
             new:true
         }
     ).select("-password -refreshToken")
+
+
+    // delete old avatar
+    const oldAvatar = req.user?.avatar;
+    
+    let publicId ;
+    if(oldAvatar){
+        const urlParts = oldAvatar.split("/");
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        publicId = publicIdWithExtension.split(".")[0];
+    }
+    const deleteAvatar = await deleteFromCloudinary(`videotube/${publicId}`);
+
+    if(!deleteAvatar){
+        throw new ApiError(400, "Error while deleting old avatar from cloudinary");
+    }
 
     return res
     .status(200)
@@ -437,6 +452,22 @@ const updateUserCoverImage = asyncHandler(async(req,res) =>{
             new:true
         }
     ).select("-password -refreshToken")
+
+    // delete old coverImage
+    const oldCover = req.user?.coverImage;
+    let publicId ;
+    
+    if(oldCover){
+        const urlParts = oldCover.split("/");
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        publicId = publicIdWithExtension.split(".")[0];
+    }
+    const deleteCover = await deleteFromCloudinary(`videotube/${publicId}`);
+
+    if(!deleteCover){
+        throw new ApiError(400, "Error while deleting old coverImage from cloudinary");
+    }
+
 
     return res
     .status(200)
