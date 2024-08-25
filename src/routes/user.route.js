@@ -10,7 +10,9 @@ import {
     updateUserAvatar, 
     updateUserCoverImage, 
     getUserChannelProfile, 
-    getWatchHistory 
+    getWatchHistory, 
+    forgotPassword,
+    resetPassword
 } from "../controllers/user.controller.js";
 
 import { upload } from "../middleware/multer.middleware.js";
@@ -33,6 +35,11 @@ router.route("/register").post(
     registerUser);
 
 router.route("/login").post(loginUser)
+
+// forgot password and reset password
+router.route("/forgot-password").post(forgotPassword);
+router.route("/reset-password/:token").post(resetPassword);
+
 
 // secured route
 router.route("/logout").put(verifyJWT, logoutUser)

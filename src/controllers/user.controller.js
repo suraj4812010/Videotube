@@ -5,6 +5,8 @@ import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import crypto from "crypto";
+import nodemailer from "nodemailer"
 
 
 // generate access and refresh token
@@ -621,7 +623,82 @@ const getWatchHistory = asyncHandler(async (req,res) => {
 })
 
 
+// forgot password send mail 
+const forgotPassword = asyncHandler(async (req,res) => {
+  try {
+      const { email } = req.body;
+  
+      const user = await User.findOne({ email });
+  
+      if (!user) {
+          throw new ApiError(400, "User with this email does not exist.")
+      }
+  
+      // Create a reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiration = Date.now() + 600000; // Token valid for 10min
+  
+      user.resetToken = resetToken;
+      user.resetTokenExpiration = resetTokenExpiration;
+      await user.save();
+  
+       // Create a reset URL
+       const resetURL = `http://localhost:${process.env.PORT}/users/reset-password/${resetToken}`;
+  
+      // Send email
+      const transporter = nodemailer.createTransport({
+          host: "smtp.gmail.com",       
+          auth: {
+              user: process.env.MAIL_USER,
+              pass: process.env.MAIL_PASS
+            }
+      });
+  
+      // this will be sent reset-passowrd url to the user email
+      const mailOptions = {
+          to: user.email,
+          from: 'password-reset@yourapp.com',
+          subject: 'Password Reset',
+          text: `You requested a password reset. Please click the following link to reset your password:\n\n${resetURL}\n\nIf you did not request this, please ignore this email.\nNOTE: This link is valid only for 10 minutes.`
+      };
+  
+      const info = await transporter.sendMail(mailOptions);
 
+      return res
+      .status(200)
+      .json(new ApiResponse(200 , {} , 'Recovery email sent.'));
+
+  } catch (error) {
+        throw  new ApiError(500 ,error)
+  }
+
+})
+
+// reset password
+const resetPassword = asyncHandler(async (req,res)=> {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const user = await User.findOne({
+        resetToken: token,
+        resetTokenExpiration: { $gt: Date.now() } // Check if token is not expired
+    });
+
+
+    if (!user) {
+        return res.status(400)
+        .json(new ApiResponse(400, {} , 'Password reset token is invalid or has expired.'));
+    }
+
+    // Update the user's password
+    user.password = password;
+    user.resetToken = undefined; // Clear the reset token and expiration
+    user.resetTokenExpiration = undefined;
+    await user.save();
+
+   return res.status(200)
+    .json(new ApiResponse(200, {} , 'Password has been reset.'));
+})
 
 
 export {
@@ -635,5 +712,7 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
+    getWatchHistory,
+    forgotPassword,
+    resetPassword
 };
